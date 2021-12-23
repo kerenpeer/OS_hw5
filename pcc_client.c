@@ -85,7 +85,7 @@
     //First - read file content to buffer
     read_b = fread(write_Buff,1,sizeof(write_Buff), file);
     //finished reading file into buffer
-    if(read_b != sizeof(write_Buff)){
+    if(read_b == 0){
         perror("\n Error : An error has occured or EOF in cilent");
         exit(1); 
     }
