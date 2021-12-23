@@ -71,7 +71,7 @@
 
     //The client sends the server N
     N_transfer = (char*)&N;
-    N_bytes_Left = sizeOf(N);
+    N_bytes_Left = sizeof(N);
     while(N_bytes_Left > 0){
         rc = write(sockfd, N_transfer, N_bytes_Left);
         if(rc < 0){
@@ -102,7 +102,7 @@
     //The server sends the client C, the number of printable characters
     // read data from server into recv_buff block until there's something to read
     N_transfer_back = (char*)&nboC; 
-    N_bytes_Left = sizeOf(nboC);
+    N_bytes_Left = sizeof(nboC);
     while(N_bytes_Left > 0 ){
         read_b = read(sockfd, N_transfer_back, N_bytes_Left);
         if( read_b <= 0 ){
