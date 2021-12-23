@@ -13,8 +13,8 @@
  
  
  int main(int argc, char *argv[]){
-     unint32_t ip, N, C;
-     unint16_t port;
+     uint32_t ip, N, C;
+     uint16_t port;
      char *file_path, *ip_address, *N_transfer,*N_transfer_back, write_Buff[1024];
      FILE *file;
      int conv, N_bytes_Left, rc, sockfd = -1;

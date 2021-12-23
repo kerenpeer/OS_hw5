@@ -14,7 +14,7 @@
 int active_client;
 int kill_serv;
 //Initialize a data structure pcc_total - for ASCII char number i, pcc_total[i] will keep the number of observations from all clients.
-unint32_t pcc_total[127] = {0};
+uint32_t pcc_total[127] = {0};
 
 /**
  * @brief function for SIGINT handeling for srver
@@ -39,10 +39,10 @@ void kill_print(void){
 
 int main(int argc, char *argv[]){
     int listenfd  = -1, connfd = -1;
-    unit32_t N, nboN;
+    uint32_t N, nboN;
     char *N_transfer;
     int  N_bytes_Left = 0, read_b, i, vOfByte;
-    unint16_t port;
+    uint16_t port;
 
     if(argc != 2){
         perror("Wrong amount of parameters for client");
@@ -143,10 +143,10 @@ int main(int argc, char *argv[]){
          * we will initate a temporray pcc_temp array to hold the current statistics, 
          * but will only add them to the global array iff the connection won't ne terminated.
          */
-        unint32_t pcc_temp[127] = {0};
+        uint32_t#pragma endregion pcc_temp[127] = {0};
         char data[1024];
         N_bytes_Left = 0;
-        unit32_t C = 0;
+        uint32_t C = 0;
 
         read_b = read(connfd, data, sizeof(data));
         N_bytes_Left += read_b;
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]){
          * and we will write back C to cilent and add the statistics to pcc_total.
          */
         if(read_b == N){
-            unint32_t nboC = htonl(C);
+            uint32_t#pragma endregion nboC = htonl(C);
             N_transfer = (char*)&nboC;
             N_bytes_Left = 0;
             int rc;
