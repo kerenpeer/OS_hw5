@@ -155,6 +155,7 @@ int main(int argc, char *argv[]){
 
         while(N_bytes_Left < N){
             read_b = read(connfd, data, sizeof(data));
+            printf("read_b is: %d", read_b);
             readBytesAmount += read_b;
             N_bytes_Left += read_b;
             if(read_b == -1){
