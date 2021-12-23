@@ -43,6 +43,9 @@
         perror("\n Error : Could not create socket \n");
         exit(1);
     }
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
     if((conv = inet_pton(AF_INET,ip_address,&ip)) != 1){
         if(conv == 0){
             perror("\n Error : src does not contain a character string representing a valid network address in thespecified address family \n");
@@ -52,9 +55,6 @@
         }
         exit(1);
     }
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
     serv_addr.sin_addr.s_addr = ip; 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0){
         perror("\n Error : Connect Failed. \n");
@@ -64,21 +64,22 @@
     //Transfer the contents of the file to the server over the TCP connection
     //compute N- the size of the file
     fseek(file, 0L, SEEK_END);
-    N = (uint32_t)ftell(file);
+    N = (uint32_t) ftell(file);
     fseek(file, 0L, SEEK_SET);
     // N is in network byte order
     N = htonl(N);
 
     //The client sends the server N
     N_transfer = (char*)&N;
-    N_bytes_Left = 0;
-    while(N_bytes_Left < N){
-        rc = write(sockfd, N_transfer+N_bytes_Left, N-N_bytes_Left);
+    N_bytes_Left = sizeOf(N);
+    while(N_bytes_Left > 0){
+        rc = write(sockfd, N_transfer, N_bytes_Left);
         if(rc < 0){
             perror("\n Error : failed to write N in cilent");
             exit(1);
         }
-        N_bytes_Left += rc;
+        N_transfer += rc;
+        N_bytes_Left -= rc;
     }
     //Send the server N bytes - the file’s content
     //First - read file content to buffer
@@ -101,14 +102,15 @@
     //The server sends the client C, the number of printable characters
     // read data from server into recv_buff block until there's something to read
     N_transfer_back = (char*)&nboC; 
-    N_bytes_Left = 0;
-    while(N_bytes_Left < N){
-        read_b = read(sockfd, N_transfer_back+N_bytes_Left, N-N_bytes_Left);
+    N_bytes_Left = sizeOf(nboC);
+    while(N_bytes_Left > 0 ){
+        read_b = read(sockfd, N_transfer_back, N_bytes_Left);
         if( read_b <= 0 ){
             perror("\n Error : problem in reading C from socket in cilent");
             exit(1);
         }
-         N_bytes_Left += read_b;
+        N_transfer_back += read_b;
+        N_bytes_Left -= read_b;
     }
     fclose(file);
     close(sockfd);

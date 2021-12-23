@@ -11,20 +11,20 @@
 #include <assert.h>
 #include <signal.h>
 
-int active_client; 
-int kill_serv;
+int active_client = 0; 
+int kill_serv = 0;
 //Initialize a data structure pcc_total - for ASCII char number i, pcc_total[i] will keep the number of observations from all clients.
 uint32_t pcc_total[127] = {0};
 
 void kill_print(void){
     int i;
-    for(i=32; i< 127; i++){
-        printf("char '%c' : %u times\n",i,pcc_total[i]);
+    for(i = 32; i < 127; i++){
+        printf("char '%c' : %u times\n", i, pcc_total[i]);
     }
 }
+
 /**
- * @brief function for SIGINT handeling for srver
- * 
+ * @brief function for SIGINT handeling for server
  */
 void SIGINT_handler(int signal_num){
     if(active_client == 0){
@@ -47,6 +47,7 @@ int main(int argc, char *argv[]){
         perror("Wrong amount of parameters for client");
         exit(1); 
     }
+
     port = atoi(argv[1]);
     struct sockaddr_in serv_addr;
     struct sockaddr_in peer_addr;
@@ -108,9 +109,9 @@ int main(int argc, char *argv[]){
         active_client = 1;
         //read N from client
         while(N_bytes_Left < sizeof(nboN)){
-            read_b = read(connfd, N_transfer, N_bytes_Left);
+            read_b = read(connfd, N_transfer, sizeof(nboN)-N_bytes_Left);
             //if we recieved EOF while having more bytes to read
-            if(read_b == 0 && N_bytes_Left != 0){
+            if(read_b == 0 && N_bytes_Left != sizeof(nboN)){
                 close(connfd);
                 active_client = 0;
                 skip_client = 1;
@@ -133,7 +134,7 @@ int main(int argc, char *argv[]){
             //managed to read from client
             else{
                 N_transfer += read_b;
-                N_bytes_Left += N_bytes_Left;
+                N_bytes_Left += read_b;
 
             }
         }
@@ -150,45 +151,53 @@ int main(int argc, char *argv[]){
         char data[1024];
         N_bytes_Left = 0;
         uint32_t C = 0;
+        int readBytesAmount = 0;
 
-        read_b = read(connfd, data, sizeof(data));
-        N_bytes_Left += read_b;
-        if(read_b == -1){
-            if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
-                perror("\n Error : read failed in server \n");
-                exit(1);
+        while(N_bytes_Left < N){
+            read_b = read(connfd, data, sizeof(data));
+            readBytesAmount += read_b;
+            N_bytes_Left += read_b;
+            if(read_b == -1){
+                if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
+                    perror("\n Error : read failed in server \n");
+                    exit(1);
+                }
+                else{
+                    close(connfd);
+                    active_client = 0;
+                    skip_client = 1;
+                    perror("\n Error : Connection terminated unexpectedly due to TCP errors in server");
+                    break;
+                }
             }
-            else{
-                close(connfd);
-                active_client = 0;
-                skip_client = 1;
-                perror("\n Error : Connection terminated unexpectedly due to TCP errors in server");
+            if(read_b == 0){
                 break;
             }
-        }
-        //count chars to temp_pcc
-        for(i=0; i < read_b; i++){
-            vOfByte = (int)data[i];
-            if(vOfByte>=32 && vOfByte<=126){
-                pcc_temp[vOfByte]++;
-                C++;
+            //count chars to temp_pcc
+            for(i=0; i < read_b; i++){
+                vOfByte = (int)data[i];
+                if(vOfByte>=32 && vOfByte<=126){
+                    pcc_temp[vOfByte]++;
+                    C++;
+                }
             }
         }
-        if( skip_client == 1){
-            continue;
+        if(skip_client == 1){
+                continue;
         }
         /**
-         * @brief if read_b == N, then the connection wasn't terminated 
+         * @brief if readBytesAmount == N, then the connection wasn't terminated 
          * and we will write back C to cilent and add the statistics to pcc_total.
          */
-        if(read_b == N){
+        if(readBytesAmount == N){
             uint32_t nboC = htonl(C);
             N_transfer = (char*)&nboC;
             N_bytes_Left = 0;
             int rc;
-            while(N_bytes_Left < N){
-                rc = write(connfd, N_transfer, N-N_bytes_Left);
-                if(rc == 0 && N_bytes_Left < N){
+            int sN = sizeof(nboC);
+            while(N_bytes_Left < sN){
+                rc = write(connfd, N_transfer, sN-N_bytes_Left);
+                if(rc == 0 && N_bytes_Left < sN){
                     close(connfd);
                     active_client = 0;
                     skip_client = 1;
