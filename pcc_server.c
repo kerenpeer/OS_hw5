@@ -155,7 +155,7 @@ int main(int argc, char *argv[]){
 
         while(N_bytes_Left < N){
             read_b = read(connfd, data, sizeof(data));
-            printf("read_b is: %d", read_b);
+            perror("read_b is: %d", read_b);
             readBytesAmount += read_b;
             N_bytes_Left += read_b;
             if(read_b == -1){
@@ -190,8 +190,8 @@ int main(int argc, char *argv[]){
          * @brief if readBytesAmount == N, then the connection wasn't terminated 
          * and we will write back C to cilent and add the statistics to pcc_total.
          */
-        printf("readBytesAmount is: %d", readBytesAmount);
-        printf("N is: %d", N);
+        perror("readBytesAmount is: %d", readBytesAmount);
+        perror("N is: %d", N);
         if(readBytesAmount == N){
             uint32_t nboC = htonl(C);
             N_transfer = (char*)&nboC;
