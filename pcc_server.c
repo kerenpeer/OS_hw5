@@ -153,7 +153,7 @@ int main(int argc, char *argv[]){
         uint32_t C = 0;
         int readBytesAmount = 0;
 
-        while(N_bytes_Left < N){
+     //   while(N_bytes_Left < N){
             read_b = read(connfd, data, sizeof(data));
             readBytesAmount += read_b;
             N_bytes_Left += read_b;
@@ -170,9 +170,9 @@ int main(int argc, char *argv[]){
                     break;
                 }
             }
-            if(read_b == 0){
+           /* if(read_b == 0){
                 break;
-            }
+            }*/
             //count chars to temp_pcc
             for(i=0; i < read_b; i++){
                 vOfByte = (int)data[i];
@@ -181,7 +181,7 @@ int main(int argc, char *argv[]){
                     C++;
                 }
             }
-        }
+       // }
         if(skip_client == 1){
                 continue;
         }
