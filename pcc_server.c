@@ -78,12 +78,12 @@ int main(int argc, char *argv[]){
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(port);
     if( 0 != bind(listenfd, (struct sockaddr*) &serv_addr, addrsize)){
-        perror("\n Error : Bind Failed. %s \n");
+        perror("\n Error : Bind Failed. \n");
         exit(1);
     }
     //Listen to incoming TCP connections on the specified server port - queue of size 10.
     if( 0 != listen(listenfd, 10)){
-        perror("\n Error : Listen Failed. %s \n");
+        perror("\n Error : Listen Failed. \n");
         exit(1);
     }
     /**
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]){
          */
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         if(connfd < 0){
-            perror("\n Error : Accept Failed. %s \n");
+            perror("\n Error : Accept Failed. \n");
             exit(1);
         }
         active_client = 1;
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]){
             }
             else if(read_b == -1){
                 if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
-                  perror("\n Error : read failed in server %s \n");
+                  perror("\n Error : read failed in server \n");
                   exit(1);
                 }
                 else{
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]){
         N_bytes_Left += read_b;
         if(read_b == -1){
             if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
-                perror("\n Error : read failed in server %s \n");
+                perror("\n Error : read failed in server \n");
                 exit(1);
             }
             else{
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]){
                 }
                 else if(rc == -1){
                     if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
-                        perror("\n Error : read failed in server %s \n");
+                        perror("\n Error : read failed in server \n");
                         exit(1);
                     }
                     else{

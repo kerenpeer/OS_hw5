@@ -57,7 +57,7 @@
     serv_addr.sin_port = htons(port);
     serv_addr.sin_addr.s_addr = ip; 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0){
-        perror("\n Error : Connect Failed. %s \n");
+        perror("\n Error : Connect Failed. \n");
         exit(1);
     }
 
