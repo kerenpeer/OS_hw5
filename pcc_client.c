@@ -43,7 +43,7 @@
         perror("\n Error : Could not create socket \n");
         exit(1);
     }
-    if(conv = inet_pton(AF_INET,ip_address,ip) != 1){
+    if((conv = inet_pton(AF_INET,ip_address,&ip)) != 1){
         if(conv == 0){
             perror("\n Error : src does not contain a character string representing a valid network address in thespecified address family \n");
         }
@@ -64,7 +64,7 @@
     //Transfer the contents of the file to the server over the TCP connection
     //compute N- the size of the file
     fseek(file, 0L, SEEK_END);
-    N = (unint32_t)ftell(file);
+    N = (uint32_t)ftell(file);
     fseek(file, 0L, SEEK_SET);
     // N is in network byte order
     N = htonl(N);
@@ -103,7 +103,7 @@
     N_transfer_back = (char*)&nboC; 
     N_bytes_Left = 0;
     while(N_bytes_Left < N){
-        read_b = read(sockfd, N_transfer+N_bytes_Left, N-N_bytes_Left);
+        read_b = read(sockfd, N_transfer_back+N_bytes_Left, N-N_bytes_Left);
         if( read_b <= 0 ){
             perror("\n Error : problem in reading C from socket in cilent");
             exit(1);

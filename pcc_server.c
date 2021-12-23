@@ -16,24 +16,23 @@ int kill_serv;
 //Initialize a data structure pcc_total - for ASCII char number i, pcc_total[i] will keep the number of observations from all clients.
 uint32_t pcc_total[127] = {0};
 
+void kill_print(void){
+    int i;
+    for(i=32; i< 127; i++){
+        printf("char '%c' : %u times\n",i,pcc_total[i]);
+    }
+}
 /**
  * @brief function for SIGINT handeling for srver
  * 
  */
-void SIGINT_handler(void){
-    int i;
+void SIGINT_handler(int signal_num){
     if(active_client == 0){
         kill_print();
         exit(0);
     }
     else{
         kill_serv = 1;
-    }
-}
-void kill_print(void){
-    int i;
-    for(i=32; i< 127; i++){
-        printf("char '%c' : %u times\n",i,pcc_total[i]);
     }
 }
 
@@ -52,15 +51,13 @@ int main(int argc, char *argv[]){
     struct sockaddr_in serv_addr;
     struct sockaddr_in peer_addr;
     socklen_t addrsize = sizeof(struct sockaddr_in);
-    char data_buff[1024];
-
     
     //init SIGINT handler
     struct sigaction sig_handler;
     sig_handler.sa_handler = &SIGINT_handler;
     sigemptyset(&sig_handler.sa_mask);
     sig_handler.sa_flags = SA_RESTART;
-    if(sigaction(SIGINT, sig_handler, 0) != 0){
+    if(sigaction(SIGINT, &sig_handler, 0) != 0){
         perror("Error: failed to allocate SIGINT in sig_handler in server");
         exit(1);
     }
@@ -112,7 +109,7 @@ int main(int argc, char *argv[]){
         while(N_bytes_Left < sizeof(nboN)){
             read_b = read(connfd, N_transfer, N_bytes_Left);
             //if we recieved EOF while having more bytes to read
-            if(read_b ==0 & N_bytes_Left != 0){
+            if(read_b == 0 && N_bytes_Left != 0){
                 close(connfd);
                 active_client = 0;
                 perror("\n Error : Connection terminated unexpectedly in server");
@@ -143,7 +140,7 @@ int main(int argc, char *argv[]){
          * we will initate a temporray pcc_temp array to hold the current statistics, 
          * but will only add them to the global array iff the connection won't ne terminated.
          */
-        uint32_t#pragma endregion pcc_temp[127] = {0};
+        uint32_t pcc_temp[127] = {0};
         char data[1024];
         N_bytes_Left = 0;
         uint32_t C = 0;
@@ -175,13 +172,13 @@ int main(int argc, char *argv[]){
          * and we will write back C to cilent and add the statistics to pcc_total.
          */
         if(read_b == N){
-            uint32_t#pragma endregion nboC = htonl(C);
+            uint32_t nboC = htonl(C);
             N_transfer = (char*)&nboC;
             N_bytes_Left = 0;
             int rc;
             while(N_bytes_Left < N){
                 rc = write(connfd, N_transfer, N-N_bytes_Left);
-                if(rc == 0 & N_bytes_Left < N){
+                if(rc == 0 && N_bytes_Left < N){
                     close(connfd);
                     active_client = 0;
                     perror("\n Error : Connection terminated unexpectedly in server");
