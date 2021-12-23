@@ -1,0 +1,16 @@
+#!/bin/bash
+
+echo "start build"
+gcc -O3 -D_POSIX_C_SOURCE=200809 -Wall -std=c11 pcc_server.c  -o pcc_server
+wait
+gcc -O3 -D_POSIX_C_SOURCE=200809 -Wall -std=c11 pcc_client.c  -o pcc_client
+wait
+echo "done build"
+
+./pcc_server 3099 & count=$( ./pcc_client 127.0.0.1 3099 test_1.txt | awk  '{print $NF}'  )
+echo "expected 7, found $count"
+count=$( ./pcc_client 127.0.0.1 3099 test_2.txt | awk  '{print $NF}'  )
+echo "expected 4, found $count"
+
+ ps -ef | grep 'pcc_server' | grep -v grep | awk '{print $2}' | xargs  kill -9  &> tmp
+echo "DONE"
