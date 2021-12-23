@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <signal.h>
 
-int active_client;
+int active_client; 
 int kill_serv;
 //Initialize a data structure pcc_total - for ASCII char number i, pcc_total[i] will keep the number of observations from all clients.
 uint32_t pcc_total[127] = {0};
@@ -37,7 +37,7 @@ void SIGINT_handler(int signal_num){
 }
 
 int main(int argc, char *argv[]){
-    int listenfd  = -1, connfd = -1;
+    int listenfd  = -1, connfd = -1, skip_client = 0;
     uint32_t N, nboN;
     char *N_transfer;
     int  N_bytes_Left = 0, read_b, i, vOfByte;
@@ -100,6 +100,7 @@ int main(int argc, char *argv[]){
          * @brief TODO: notice no skip_client_flag
          */
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
+        skip_client = 0;
         if(connfd < 0){
             perror("\n Error : Accept Failed. \n");
             exit(1);
@@ -112,6 +113,7 @@ int main(int argc, char *argv[]){
             if(read_b == 0 && N_bytes_Left != 0){
                 close(connfd);
                 active_client = 0;
+                skip_client = 1;
                 perror("\n Error : Connection terminated unexpectedly in server");
                 break;
             }
@@ -123,6 +125,7 @@ int main(int argc, char *argv[]){
                 else{
                     close(connfd);
                     active_client = 0;
+                    skip_client = 1;
                     perror("\n Error : Connection terminated unexpectedly due to TCP errors in server");
                     break;
                 }
@@ -133,6 +136,9 @@ int main(int argc, char *argv[]){
                 N_bytes_Left += N_bytes_Left;
 
             }
+        }
+        if( skip_client == 1){
+            continue;
         }
         N = ntohl(nboN);
         /**
@@ -155,6 +161,7 @@ int main(int argc, char *argv[]){
             else{
                 close(connfd);
                 active_client = 0;
+                skip_client = 1;
                 perror("\n Error : Connection terminated unexpectedly due to TCP errors in server");
                 break;
             }
@@ -166,6 +173,9 @@ int main(int argc, char *argv[]){
                 pcc_temp[vOfByte]++;
                 C++;
             }
+        }
+        if( skip_client == 1){
+            continue;
         }
         /**
          * @brief if read_b == N, then the connection wasn't terminated 
@@ -181,6 +191,7 @@ int main(int argc, char *argv[]){
                 if(rc == 0 && N_bytes_Left < N){
                     close(connfd);
                     active_client = 0;
+                    skip_client = 1;
                     perror("\n Error : Connection terminated unexpectedly in server");
                     break;
                 }
@@ -192,6 +203,7 @@ int main(int argc, char *argv[]){
                     else{
                         close(connfd);
                         active_client = 0;
+                        skip_client = 1;
                         perror("\n Error : Connection terminated unexpectedly due to TCP errors in server");
                         break;
                     }
@@ -202,6 +214,9 @@ int main(int argc, char *argv[]){
                     N_bytes_Left += rc;
 
                 }
+            }
+            if( skip_client == 1){
+                continue;
             }
             for(i=0; i< 127; i++){
                 pcc_total[i] += pcc_temp[i];
