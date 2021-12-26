@@ -20,7 +20,7 @@
      int conv, N_bytes_Left, rc, sockfd = -1;
      ssize_t read_b, write_b;
      void *pointer;
-     int32_t nboC;
+     int32_t networkByteOrderOfC;
  
 
      if(argc != 4){
@@ -110,11 +110,11 @@
    
     //The server sends the client C, the number of printable characters
     // read data from server into recv_buff block until there's something to read
-    N_transfer_back = (char*)&nboC; 
-    N_bytes_Left = sizeof(nboC);
+    N_transfer_back = (char*)&networkByteOrderOfC; 
+    N_bytes_Left = sizeof(networkByteOrderOfC);
     while(N_bytes_Left > 0 ){
         read_b = read(sockfd, N_transfer_back, N_bytes_Left);
-        if( read_b < 1 ){
+        if(read_b < 1){
             perror("\n Error : problem in reading C from socket in cilent");
             exit(1);
         }
@@ -123,7 +123,7 @@
             N_bytes_Left -= read_b;
         }
     }
-    C = ntohl(nboC);
+    C = ntohl(networkByteOrderOfC);
     fclose(file);
     close(sockfd);
     printf("# of printable characters: %u\n", C);

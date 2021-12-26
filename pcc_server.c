@@ -38,7 +38,7 @@ void SIGINT_handler(int signal_num){
 
 int main(int argc, char *argv[]){
     int listenfd  = -1, connfd = -1, skip_client = 0;
-    uint32_t N, nboN;
+    uint32_t N, networkByteOrderOfN;
     char *N_transfer;
     int  N_bytes_Left, read_b, i, vOfByte;
     uint16_t port;
@@ -104,11 +104,11 @@ int main(int argc, char *argv[]){
         }
         active_client = 1;
         //read N from client
-        N_transfer = (char*)&nboN;
-        N_bytes_Left = sizeof(nboN);
+        N_transfer = (char*)&networkByteOrderOfN;
+        N_bytes_Left = sizeof(networkByteOrderOfN);
         while(N_bytes_Left > 0){
             read_b = read(connfd, N_transfer, N_bytes_Left);
-            //if we recieved EOF while having more bytes to read
+            //if we recieved EOF while having more bytes to read - error
             if(read_b == 0 && N_bytes_Left != 0){
                 close(connfd);
                 active_client = 0;
@@ -116,12 +116,15 @@ int main(int argc, char *argv[]){
                 perror("\n Error : Connection terminated unexpectedly in server");
                 break;
             }
+            // error in reading into buffer
             else if(read_b == -1){
+                // error isn't ETIMEDOUT and ECONNRESET and EPIPE - need to terminate
                 if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
                   perror("\n Error : read failed in server \n");
                   exit(1);
                 }
                 else{
+                    // error is ETIMEDOUT or ECONNRESET or EPIPE - no need to terminate srever, just skip client
                     close(connfd);
                     active_client = 0;
                     skip_client = 1;
@@ -139,11 +142,11 @@ int main(int argc, char *argv[]){
         if(skip_client == 1){
             continue;
         }
-        N = ntohl(nboN);
+        N = ntohl(networkByteOrderOfN);
         /**
          * @brief Since The pcc_global statistics must not reflect the data received on the (terminated) connections - 
          * we will initate a temporray pcc_temp array to hold the current statistics, 
-         * but will only add them to the global array iff the connection won't ne terminated.
+         * but will only add them to the global array iff the connection won't be terminated.
          */
         uint32_t pcc_temp[127] = {0};
         char data[1024];
@@ -153,14 +156,14 @@ int main(int argc, char *argv[]){
 
         while(N_bytes_Left > 0){
             read_b = read(connfd, data, sizeof(data));
-            printf("read_b is: %d", read_b);
-            readBytesAmount += read_b;
-            N_bytes_Left -= read_b;
+            //error in reading file
             if(read_b == -1){
+                // error isn't ETIMEDOUT and ECONNRESET and EPIPE - need to terminate
                 if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
                     perror("\n Error : read failed in server \n");
                     exit(1);
                 }
+                // error is ETIMEDOUT or ECONNRESET or EPIPE - no need to terminate srever, just skip client
                 else{
                     close(connfd);
                     active_client = 0;
@@ -169,9 +172,12 @@ int main(int argc, char *argv[]){
                     break;
                 }
             }
+            // finished reading file
             if(read_b == 0){
                 break;
             }
+            readBytesAmount += read_b;
+            N_bytes_Left -= read_b;
             //count chars to temp_pcc
             for(i=0; i < read_b; i++){
                 vOfByte = (int)data[i];
@@ -188,15 +194,14 @@ int main(int argc, char *argv[]){
          * @brief if readBytesAmount == N, then the connection wasn't terminated 
          * and we will write back C to cilent and add the statistics to pcc_total.
          */
-        printf("readBytesAmount is: %d", readBytesAmount);
-        printf("N is: %d", N);
         if(readBytesAmount == N){
-            uint32_t nboC = htonl(C);
-            N_transfer = (char*)&nboC;
-            N_bytes_Left = sizeof(nboC);
+            uint32_t networkByteOrderOfC = htonl(C);
+            N_transfer = (char*)&networkByteOrderOfC;
+            N_bytes_Left = sizeof(networkByteOrderOfC);
             int rc;
             while(N_bytes_Left > 0){
                 rc = write(connfd, N_transfer, N_bytes_Left);
+                //Writing endeded when there are still bytes to write
                 if(rc == 0 && N_bytes_Left != 0){
                     close(connfd);
                     active_client = 0;
@@ -205,10 +210,12 @@ int main(int argc, char *argv[]){
                     break;
                 }
                 else if(rc == -1){
+                    // error isn't ETIMEDOUT and ECONNRESET and EPIPE - need to terminate
                     if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
                         perror("\n Error : read failed in server \n");
                         exit(1);
                     }
+                    // error is ETIMEDOUT or ECONNRESET or EPIPE - no need to terminate srever, just skip client
                     else{
                         close(connfd);
                         active_client = 0;
@@ -217,7 +224,7 @@ int main(int argc, char *argv[]){
                         break;
                     }
                 }
-                //managed to write to client
+                //managed to write to client successfully 
                 else{
                     N_transfer += rc;
                     N_bytes_Left -= rc;
@@ -227,6 +234,7 @@ int main(int argc, char *argv[]){
             if(skip_client == 1){
                 continue;
             }
+            //client connextions is succeffull - we will add it's stattistics to the global statistics array. 
             for(i=0; i< 127; i++){
                 pcc_total[i] += pcc_temp[i];
             }
