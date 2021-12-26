@@ -105,7 +105,7 @@ int main(int argc, char *argv[]){
         active_client = 1;
         //read N from client
         N_transfer = (char*)&nboN;
-        N_bytes_left = sizeof(nboN);
+        N_bytes_Left = sizeof(nboN);
         while(N_bytes_Left > 0){
             read_b = read(connfd, N_transfer, N_bytes_Left);
             //if we recieved EOF while having more bytes to read
