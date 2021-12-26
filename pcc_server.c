@@ -40,7 +40,7 @@ int main(int argc, char *argv[]){
     int listenfd  = -1, connfd = -1, skip_client = 0;
     uint32_t N, nboN;
     char *N_transfer;
-    int  N_bytes_Left = 0, read_b, i, vOfByte;
+    int  N_bytes_Left, read_b, i, vOfByte;
     uint16_t port;
 
     if(argc != 2){
@@ -95,11 +95,7 @@ int main(int argc, char *argv[]){
      * 4) Write the result to the client over the TCP connection
      * 5) Updates the pcc_total global data structure
      */
-    N_transfer = (char*)&nboN;
     while(kill_serv != 1){
-        /**
-         * @brief TODO: notice no skip_client_flag
-         */
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         skip_client = 0;
         if(connfd < 0){
@@ -108,10 +104,12 @@ int main(int argc, char *argv[]){
         }
         active_client = 1;
         //read N from client
-        while(N_bytes_Left < sizeof(nboN)){
-            read_b = read(connfd, N_transfer, sizeof(nboN)-N_bytes_Left);
+        N_transfer = (char*)&nboN;
+        N_bytes_left = sizeof(nboN);
+        while(N_bytes_Left > 0){
+            read_b = read(connfd, N_transfer, N_bytes_Left);
             //if we recieved EOF while having more bytes to read
-            if(read_b == 0 && N_bytes_Left != sizeof(nboN)){
+            if(read_b == 0 && N_bytes_Left != 0){
                 close(connfd);
                 active_client = 0;
                 skip_client = 1;
@@ -134,11 +132,11 @@ int main(int argc, char *argv[]){
             //managed to read from client
             else{
                 N_transfer += read_b;
-                N_bytes_Left += read_b;
+                N_bytes_Left -= read_b;
 
             }
         }
-        if( skip_client == 1){
+        if(skip_client == 1){
             continue;
         }
         N = ntohl(nboN);
@@ -149,15 +147,15 @@ int main(int argc, char *argv[]){
          */
         uint32_t pcc_temp[127] = {0};
         char data[1024];
-        N_bytes_Left = 0;
+        N_bytes_Left = N;
         uint32_t C = 0;
         int readBytesAmount = 0;
 
-        while(N_bytes_Left < N){
+        while(N_bytes_Left > 0){
             read_b = read(connfd, data, sizeof(data));
             printf("read_b is: %d", read_b);
             readBytesAmount += read_b;
-            N_bytes_Left += read_b;
+            N_bytes_Left -= read_b;
             if(read_b == -1){
                 if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
                     perror("\n Error : read failed in server \n");
@@ -195,12 +193,11 @@ int main(int argc, char *argv[]){
         if(readBytesAmount == N){
             uint32_t nboC = htonl(C);
             N_transfer = (char*)&nboC;
-            N_bytes_Left = 0;
+            N_bytes_Left = sizeof(nboC);
             int rc;
-            int sN = sizeof(nboC);
-            while(N_bytes_Left < sN){
-                rc = write(connfd, N_transfer, sN-N_bytes_Left);
-                if(rc == 0 && N_bytes_Left < sN){
+            while(N_bytes_Left > 0){
+                rc = write(connfd, N_transfer, N_bytes_Left);
+                if(rc == 0 && N_bytes_Left != 0){
                     close(connfd);
                     active_client = 0;
                     skip_client = 1;
@@ -223,11 +220,11 @@ int main(int argc, char *argv[]){
                 //managed to write to client
                 else{
                     N_transfer += rc;
-                    N_bytes_Left += rc;
+                    N_bytes_Left -= rc;
 
                 }
             }
-            if( skip_client == 1){
+            if(skip_client == 1){
                 continue;
             }
             for(i=0; i< 127; i++){

@@ -13,7 +13,7 @@
  
  
  int main(int argc, char *argv[]){
-     uint32_t ip, N, C;
+     uint32_t N, C;
      uint16_t port;
      char *file_path, *ip_address, *N_transfer,*N_transfer_back, write_Buff[1024];
      FILE *file;
@@ -27,6 +27,7 @@
        perror("Wrong amount of parameters for client");
        exit(1);  
      }
+
      ip_address = argv[1];
      port = atoi(argv[2]);
      file_path = argv[3];
@@ -46,7 +47,7 @@
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
-    if((conv = inet_pton(AF_INET,ip_address,&ip)) != 1){
+    if((conv = inet_pton(AF_INET,ip_address,&(serv_addr.sin_addr))) != 1){
         if(conv == 0){
             perror("\n Error : src does not contain a character string representing a valid network address in thespecified address family \n");
         }
@@ -55,14 +56,13 @@
         }
         exit(1);
     }
-    serv_addr.sin_addr.s_addr = ip; 
     if(connect(sockfd, (struct sockaddr*) &serv_addr, sizeof(serv_addr)) < 0){
         perror("\n Error : Connect Failed. \n");
         exit(1);
     }
 
     //Transfer the contents of the file to the server over the TCP connection
-    //compute N- the size of the file
+    //compute N - the size of the file
     fseek(file, 0L, SEEK_END);
     N = (uint32_t) ftell(file);
     fseek(file, 0L, SEEK_SET);
@@ -74,47 +74,58 @@
     N_bytes_Left = sizeof(N);
     while(N_bytes_Left > 0){
         rc = write(sockfd, N_transfer, N_bytes_Left);
-        if(rc < 0){
+        if(rc < 1){
             perror("\n Error : failed to write N in cilent");
             exit(1);
         }
-        N_transfer += rc;
-        N_bytes_Left -= rc;
+        else{
+            N_transfer += rc;
+            N_bytes_Left -= rc;
+        }
     }
     //Send the server N bytes - the file’s content
-    //First - read file content to buffer
-    read_b = fread(write_Buff,1,sizeof(write_Buff), file);
-    //finished reading file into buffer
-    if(read_b == 0){
-        perror("\n Error : An error has occured or EOF in cilent");
-        exit(1); 
-    }
-    pointer = write_Buff;
-    while(read_b > 0){
-        write_b = write(sockfd, pointer, read_b);
-        if(write_b <=0){
-            perror("\n Error : problem in writing file to socket in cilent");
-            exit(1);
+    while(1){ 
+        //First - read file content to buffer
+        read_b = fread(write_Buff,1,sizeof(write_Buff), file);
+        //error reading file into buffer
+        if(read_b < 0){
+            perror("\n Error : An error has occured or EOF in cilent");
+            exit(1); 
         }
-        read_b -= write_b;
-        pointer += write_b;
+        //finished reading file into buffer
+        if(read_b == 0){
+            break;
+        }
+        pointer = write_Buff;
+        while(read_b > 0){
+            write_b = write(sockfd, pointer, read_b);
+            if(write_b <=0){
+                perror("\n Error : problem in writing file to socket in cilent");
+                exit(1);
+            }
+            read_b -= write_b;
+            pointer += write_b;
+        }
     }
+   
     //The server sends the client C, the number of printable characters
     // read data from server into recv_buff block until there's something to read
     N_transfer_back = (char*)&nboC; 
     N_bytes_Left = sizeof(nboC);
     while(N_bytes_Left > 0 ){
         read_b = read(sockfd, N_transfer_back, N_bytes_Left);
-        if( read_b <= 0 ){
+        if( read_b < 1 ){
             perror("\n Error : problem in reading C from socket in cilent");
             exit(1);
         }
-        N_transfer_back += read_b;
-        N_bytes_Left -= read_b;
+        else{
+            N_transfer_back += read_b;
+            N_bytes_Left -= read_b;
+        }
     }
+    C = ntohl(nboC);
     fclose(file);
     close(sockfd);
-    C = ntohl(nboC);
     printf("# of printable characters: %u\n", C);
     exit(0);
  }
