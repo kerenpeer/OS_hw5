@@ -21,6 +21,9 @@
 #include <assert.h>
 #include <signal.h>
 
+void kill_print(void);
+void SIGINT_handler(int signal_num);
+
 int active_client = 0; 
 int kill_serv = 0;
 //Initialize a data structure pcc_total - for ASCII char number i, pcc_total[i] will keep the number of observations from all clients.
@@ -49,8 +52,8 @@ void SIGINT_handler(int signal_num){
 int main(int argc, char *argv[]){
     int listenfd  = -1, connfd = -1, skip_client = 0;
     uint32_t N, networkByteOrderOfN;
-    char *N_transfer;
-    int  N_bytes_Left, read_b, i, vOfByte;
+    char *N_transfer, *C_transfer;
+    int  N_bytes_Left, C_bytes_Left, read_b, i, vOfByte;
     uint16_t port;
 
     if(argc != 2){
@@ -102,10 +105,11 @@ int main(int argc, char *argv[]){
      * 1) Accept TCP connection
      * 2) Read a stream of bytes from the client
      * 3) Computes the stream's printable character count
-     * 4) Write the result to the client over the TCP connection
+     * 4) If connection isn't terminated unexpectadly - write the result to the client over the TCP connection
      * 5) Updates the pcc_total global data structure
      */
     while(kill_serv != 1){
+        // loop step 1
         connfd = accept(listenfd, (struct sockaddr*) &peer_addr, &addrsize);
         skip_client = 0;
         if(connfd < 0){
@@ -116,6 +120,8 @@ int main(int argc, char *argv[]){
         //read N from client
         N_transfer = (char*)&networkByteOrderOfN;
         N_bytes_Left = sizeof(networkByteOrderOfN);
+        
+        // loop step 2
         while(N_bytes_Left > 0){
             read_b = read(connfd, N_transfer, N_bytes_Left);
             //if we recieved EOF while having more bytes to read - error
@@ -188,6 +194,8 @@ int main(int argc, char *argv[]){
             }
             readBytesAmount += read_b;
             N_bytes_Left -= read_b;
+            
+            // loo step 3
             //count chars to temp_pcc
             for(i=0; i < read_b; i++){
                 vOfByte = (int)data[i];
@@ -200,26 +208,27 @@ int main(int argc, char *argv[]){
         if(skip_client == 1){
                 continue;
         }
+        // loop step 4
         /**
          * @brief if readBytesAmount == N, then the connection wasn't terminated 
          * and we will write back C to cilent and add the statistics to pcc_total.
          */
         if(readBytesAmount == N){
             uint32_t networkByteOrderOfC = htonl(C);
-            N_transfer = (char*)&networkByteOrderOfC;
-            N_bytes_Left = sizeof(networkByteOrderOfC);
-            int rc;
-            while(N_bytes_Left > 0){
-                rc = write(connfd, N_transfer, N_bytes_Left);
+            C_transfer = (char*)&networkByteOrderOfC;
+            C_bytes_Left = sizeof(networkByteOrderOfC);
+            int write_b;
+            while(C_bytes_Left > 0){
+                write_b = write(connfd, C_transfer, C_bytes_Left);
                 //Writing endeded when there are still bytes to write
-                if(rc == 0 && N_bytes_Left != 0){
+                if(write_b == 0 && C_bytes_Left != 0){
                     close(connfd);
                     active_client = 0;
                     skip_client = 1;
                     perror("\n Error : Connection terminated unexpectedly in server");
                     break;
                 }
-                else if(rc == -1){
+                else if(write_b == -1){
                     // error isn't ETIMEDOUT and ECONNRESET and EPIPE - need to terminate
                     if(errno != ETIMEDOUT && errno != ECONNRESET && errno != EPIPE){
                         perror("\n Error : read failed in server \n");
@@ -236,15 +245,16 @@ int main(int argc, char *argv[]){
                 }
                 //managed to write to client successfully 
                 else{
-                    N_transfer += rc;
-                    N_bytes_Left -= rc;
+                    C_transfer += write_b;
+                    C_bytes_Left -= write_b;
 
                 }
             }
             if(skip_client == 1){
                 continue;
             }
-            //client connextions is succeffull - we will add it's stattistics to the global statistics array. 
+            // loop step 5
+            //client connection is succeffull - we will add it's stattistics to the global statistics array. 
             for(i=0; i< 127; i++){
                 pcc_total[i] += pcc_temp[i];
             }
